@@ -163,11 +163,15 @@ sim_fig, sim_ax = plt.subplots(1, figsize=(18, 7))
 #plot simulation results
 sim_ax.set_title('EWH Sim Results')
 sim_ax.set_xlabel('Time')
-sim_ax.set_ylabel('Amplitude')
+sim_ax.set_ylabel('Temperature (\u2103)')
 sim_ax.margins(x=0.001, y=0.02)
 sim_ax.xaxis.set_major_formatter(date_format)
 sim_ax.plot(sim_df['EWH Temperature (\u2103)'])
-sim_ax.plot(sim_df['EWH Power (kW)'])
+
+ax2 = sim_ax.twinx() 
+
+ax2.plot(sim_df['EWH Power (kW)'], color='tab:red')
+ax2.set_ylabel('Power (kW)')
 sim_fig.tight_layout()
 
 #SAVE SIMULATIONS TO FILE
