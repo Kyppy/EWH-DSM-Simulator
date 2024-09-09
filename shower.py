@@ -36,12 +36,12 @@ class Shower():
 
         return distribution(n, p)
 
-    def duration_intensity(self):
+    def duration_intensity(self, user_age):
         duration_stats = self.usage_stats['duration']
         # select frequency distribution function
         distribution = getattr(np.random, duration_stats['distribution'].lower())
         # parse time 'str' into Timedelta object and convert to minutes
-        df = int(pd.Timedelta(duration_stats['df'][self.user_age]).total_seconds() / 60)
+        df = int(pd.Timedelta(duration_stats['df'][user_age]).total_seconds() / 60)
         # sample shower duration value using statistical distribution
         sampled_duration = distribution(df)
         duration = int(pd.Timedelta(minutes=sampled_duration).total_seconds()/60)
@@ -49,25 +49,13 @@ class Shower():
         intensity = self.usage_stats['subtype'][self.name]['intensity']
         return duration, intensity
 
-    def simulate(self, consumption, users=None, ind_enduse=None, pattern_num=1, day_num=0):
+    def simulate(self, user):
+        duration, intensity = self.duration_intensity(user.age)
+        start = int(user.generate_pdf().sample().index[0].total_seconds() / 60)
+        end = start + duration
+        
+        return start, end, intensity
 
-        prob_usage = self.usage_probability().values
-
-        for j, user in enumerate(users):
-            freq = self.fct_frequency(age=user.age)
-            prob_user = user.presence.values
-
-            for i in range(freq):
-                duration, intensity = self.fct_duration_intensity(age=user.age)
-
-                prob_joint = normalize(prob_user * prob_usage)
-                u = np.random.uniform()
-                start = np.argmin(np.abs(np.cumsum(prob_joint) - u)) + int(pd.to_timedelta('1 day').total_seconds())*day_num
-                end = start + duration
-                consumption[start:end, j, ind_enduse, pattern_num] = intensity
-                
-        return consumption
-
-shower = Shower()
-freq = shower.frequency()
-duration, intensity = shower.duration_intensity()
+# shower = Shower()
+# freq = shower.frequency()
+# duration, intensity = shower.duration_intensity()
