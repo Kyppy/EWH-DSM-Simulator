@@ -35,8 +35,10 @@ class EWH:
     def calculate_power(self, delta_temp, time_step):
         return ((self.mass * specific_heat_cap * delta_temp)/time_step)
     
-    def draw_event_loss (self, time_step):
-        sigma = (self.volume - (self.draw_rate*time_step))/self.volume
+    def draw_event_loss (self, draw_rate=None, time_step=60):
+        if draw_rate is None:
+            draw_rate = self.draw_rate
+        sigma = (self.volume - (draw_rate*time_step))/self.volume
         return sigma * (self.current_temp - self.inlet_temp) + self.inlet_temp
         
     def increase_temp(self, time_step):

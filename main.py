@@ -7,10 +7,12 @@ Created on Mon Sep  2 13:04:24 2024
 
 import ewh_sim
 import math
-import pandas as pd
-from pandas.tseries.offsets import DateOffset
 import matplotlib.pyplot as plt
 from matplotlib.dates import DateFormatter
+import pandas as pd
+from pandas.tseries.offsets import DateOffset
+import shower
+import user
 
 def days_to_seconds(days):
     return days * 86400
@@ -38,15 +40,27 @@ temp_profile_df.index = pd.to_datetime(temp_profile_df.index)
 ewh_temp = []
 ewh_power = []
 
-
 # instantiate EWH object
 ewh = ewh_sim.EWH(always_on=True, randomised=False)
 # instantitate and initialise simulation settings and ambient temp value
 sim = ewh_sim.Simulation(days=simulation_days, temp_variance=True, time_step=time_step)
 ambient_temp = sim.ambient_temperature
 
+# instantiate user and shower
+user = user.User(age='work_ad')
+shower = shower.Shower()
+# run single shower simulation
+start_time, end_time, intensity = shower.simulate(user)
+
+print(pd.Timedelta(minutes=start_time))
 #RUN SIMULATION 
 for sim_day in range(simulation_days):
+    # set containers for simulated EWH temperature, power and event time periods
+    temp = []
+    power = []
+    activation_periods = []
+    draw_event_periods = []
+    
     # set container for simulated EWH settings
     ewh_settings = [ewh.mass, ewh.element_rating, ewh.upper_temp_limit, ewh.lower_temp_limit]
         
@@ -62,12 +76,6 @@ for sim_day in range(simulation_days):
     if ewh.always_on:
         ewh.is_active = True
     
-    # set containers for simulated EWH temperature, power and event time periods
-    temp = []
-    power = []
-    activation_periods = []
-    draw_event_periods = []
-   
     #generate EWH temperature profile
     for period in range (sim_period):
         #every hour update the ambient temp using real temp data
@@ -78,26 +86,16 @@ for sim_day in range(simulation_days):
         #determine temperature change due to standing losses
         ewh.current_temp = ewh.standing_loss(sim.ambient_temperature, sim.time_step)
         
-        #determine usage event occurence
-        # if period in draw_event_periods:
-        #     ewh.draw_event = True
-        #     sim.event_timer = ewh.full_draw_duration/sim.time_step
-        #     # sim.refresh_event_timer()
-               
-        #temperature change from usage event
-        # if ewh.draw_event and sim.event_timer > 0:
-        #     ewh.current_temp = ewh.draw_event_loss(sim.time_step)
-        #     sim.event_timer -= 1
-            
-        #     if sim.event_timer < 1:
-        #         ewh.draw_event = False
+        # check for draw event start and end times
+        if period == start_time:
+            ewh.draw_event  = True
+        elif period == end_time:
+            ewh.draw_event  = False
         
-        #determine ewh activation
-        # if period in activation_periods and not ewh.always_on:
-        #     if not ewh.is_active:
-        #         ewh.is_active = True
-        #     ewh.activation_timer += sim.generate_activation_time()
-            
+        # perform draw event
+        if ewh.draw_event:
+            ewh.current_temp = ewh.draw_event_loss(draw_rate=intensity)
+        
         #determine temperature change due to ewh element
         if ewh.is_active:
             if ewh.element_on:
@@ -117,14 +115,6 @@ for sim_day in range(simulation_days):
         else:
             power.append(0)
         
-        #determine remaining ewh activation time
-        # if ewh.activation_timer > 0 and not ewh.always_on:
-        #     ewh.activation_timer -= 1
-            
-        # if ewh.activation_timer < 1 and not ewh.always_on:
-        #     ewh.element_on = False
-        #     ewh.is_active = False
-            
         temp.append(ewh.current_temp)
     # add current EWH temperature to list of other simulated EWH temperatures
     ewh_temp.append(temp)

@@ -5,6 +5,8 @@ import numpy as np
 import scipy.stats as sci_stats
 import pandas as pd
 import matplotlib.pyplot as plt
+import utils
+from matplotlib.dates import DateFormatter
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal
 from settings import DATA_PATH
@@ -73,9 +75,9 @@ class UserSchedule:
             self.home = self.sleep - pd.Timedelta(minutes=30)
     
     def pdf(self, peak=0.65, normal=0.335, away=0.0, night=0.015):
-        index = pd.timedelta_range(start='00:00:00', end='24:00:00', freq='1Min')
+        index = pd.timedelta_range(start='00:00:00', end='23:59:00', freq='1Min')
         pdf = pd.Series(index=index, dtype='float64')
-
+        
         up = int((self.up.total_seconds()) / 60) % 1440
         up_p30 = int((up + 30)) % 1440
 
@@ -154,7 +156,8 @@ class User:
     #gender: Literal['male', 'female'] = None
     age: Literal['child', 'teen', 'adult', 'home_ad', 'work_ad', 'senior'] = None  
     job: bool = True
-    user_schedule: UserSchedule = field(init=False, repr=False)
+    schedule: UserSchedule = field(init=False, repr=False)
+    schedule_pdf: Any = field(init=False, repr=False)
 
     def __post_init__(self):
 
@@ -165,19 +168,36 @@ class User:
                 self.age = 'home_ad'
 
     def generate_schedule(self, weekday=True):
-        self.user_schedule = UserSchedule(user=self, weekday=weekday)
+        self.schedule = UserSchedule(user=self, weekday=weekday)
     
     def generate_pdf(self, peak=0.65, normal=0.335, away=0.0, night=0.015):
         self.generate_schedule()
-        return self.user_schedule.pdf(peak=peak, normal=normal, away=away, night=night)
+        return self.schedule.pdf(peak=peak, normal=normal, away=away, night=night)
         
 # user = User(age='work_ad')
-# user.generate_schedule()
 # pdf = user.generate_pdf()
 
-# start = pdf.sample().index[0]
-# start_min_1 = start.total_seconds() / 60
-# #start_min_2 = pdf.sample().index[0].total_seconds() / 60
-# #start_mins = pd.Timedelta(pdf.sample().index[0]).total_seconds() / 60
-# # plt.plot(pdf)
-# # plt.plot(np.cumsum(pdf))
+# pdf.index =[utils.format_timedelta_to_HHMMSS(x) for x in pdf.index]
+
+# #PLOT EWH SIMULATION RESULTS
+# # figure display settings
+# date_format = DateFormatter("%H:%M")
+# plt.rcParams['figure.dpi'] = 300
+
+# # define plot figure
+# cdf_fig, cdf_ax = plt.subplots(1, figsize=(18, 7))
+
+# #plot simulation results
+# cdf_ax.set_title('Water Usage PDF vs CDF')
+# cdf_ax.set_xlabel('Time')
+# cdf_ax.set_ylabel('Probability Water Usage (CDF)')
+# cdf_ax.margins(x=0.002, y=0.02)
+# cdf_ax.xaxis.set_major_formatter(date_format)
+# cdf_ax.plot(np.cumsum(pdf))
+
+# pdf_ax = cdf_ax.twinx() 
+# pdf_ax.plot(pdf, color='tab:red')
+# pdf_ax.set_ylabel('Probability Water Usage (PDF)')
+# pdf_ax.margins(x=0.002, y=0.02)
+# pdf_ax.xaxis.set_major_formatter(date_format)
+# cdf_fig.tight_layout()
