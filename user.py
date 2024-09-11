@@ -22,6 +22,7 @@ class UserSchedule:
     go: pd.Timedelta = field(init=False)
     home: pd.Timedelta = field(init=False)
     sleep: pd.Timedelta = field(init=False)
+    pdf: Any = field(init=False, repr=False)
 
     # store probability distributions for each state of activity 
     _prob_getting_up: Any = field(init=False, repr=False)
@@ -74,7 +75,7 @@ class UserSchedule:
         if self.sleep < self.home:
             self.home = self.sleep - pd.Timedelta(minutes=30)
     
-    def pdf(self, peak=0.65, normal=0.335, away=0.0, night=0.015):
+    def generate_pdf(self, peak=0.65, normal=0.335, away=0.0, night=0.015):
         index = pd.timedelta_range(start='00:00:00', end='23:59:00', freq='1Min')
         pdf = pd.Series(index=index, dtype='float64')
         
@@ -157,8 +158,7 @@ class User:
     age: Literal['child', 'teen', 'adult', 'home_ad', 'work_ad', 'senior'] = None  
     job: bool = True
     schedule: UserSchedule = field(init=False, repr=False)
-    schedule_pdf: Any = field(init=False, repr=False)
-
+    
     def __post_init__(self):
 
         if self.age == 'adult':
@@ -172,7 +172,7 @@ class User:
     
     def generate_pdf(self, peak=0.65, normal=0.335, away=0.0, night=0.015):
         self.generate_schedule()
-        return self.schedule.pdf(peak=peak, normal=normal, away=away, night=night)
+        self.schedule.pdf = self.schedule.generate_pdf(peak=peak, normal=normal, away=away, night=night)
         
 # user = User(age='work_ad')
 # pdf = user.generate_pdf()

@@ -7,7 +7,7 @@ from settings import DATA_PATH
 
 @dataclass
 class Shower():
-    name: str = "NormalShower"  # ... name of the end-use
+    name: str = "NormalShower"  
     user_age: str = "work_ad"
 
     def __post_init__(self):
@@ -15,16 +15,6 @@ class Shower():
         self.diurnal_stats = toml.load(open(os.path.join(DATA_PATH, 'diurnal_distributions.toml'), 'r'))
         self.usage_stats = toml.load(open(os.path.join(DATA_PATH, 'end_uses', 'shower.toml'), 'r'))
 
-    # def load_diurnal_statistics():
-    #     # Load diurnal pattern statistics from .toml file
-    #     diurnal_pattern_file = os.path.join(DATA_PATH, 'diurnal_distributions.toml')
-    #     return toml.load(open(diurnal_pattern_file, 'r'))
-    
-    # def load_usage_statistics():
-    #     # Load shower usage statistics from .toml file
-    #     usage_stats_dir = os.path.join(DATA_PATH, 'end_uses', 'shower.toml')
-    #     return toml.load(open(usage_stats_dir, 'r'))
-    
     def frequency(self):
         # load shower frequency stats
         freq_stats = self.usage_stats['frequency']
@@ -51,11 +41,8 @@ class Shower():
 
     def simulate(self, user):
         duration, intensity = self.duration_intensity(user.age)
-        start = int(user.generate_pdf().sample().index[0].total_seconds() / 60)
+        user.generate_pdf()
+        start = int(user.schedule.pdf.sample().index[0].total_seconds() / 60)
         end = start + duration
         
         return start, end, intensity
-
-# shower = Shower()
-# freq = shower.frequency()
-# duration, intensity = shower.duration_intensity()
