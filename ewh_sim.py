@@ -42,7 +42,7 @@ class EWH:
         return sigma * (self.current_temp - self.inlet_temp) + self.inlet_temp
     
     def initialise_temp(self):
-        self.element_on = random.choices([True, False], [0.96, 0.04], k=1)
+        self.element_on = random.choices([True, False], [0.04, 0.96], k=1)[0]
         self.current_temp = round(random.uniform(self.lower_temp_limit, self.upper_temp_limit), 2)
         
     def increase_temp(self, time_step):

@@ -40,10 +40,13 @@ temp_profile_df.index = pd.to_datetime(temp_profile_df.index)
 # define containers to contain EWH temperature(s) and power
 ewh_temp = []
 ewh_power = []
+ewh_draw = []
 
 # instantiate EWH object
 ewh = ewh_sim.EWH(always_on=True, randomised=False)
 ewh.initialise_temp()
+print(ewh.element_on)
+print(ewh.current_temp)
 # instantitate and initialise simulation settings and ambient temp value
 sim = ewh_sim.Simulation(days=simulation_days, temp_variance=True, time_step=time_step)
 ambient_temp = sim.ambient_temperature
@@ -53,8 +56,6 @@ user = user.User(age='work_ad')
 shower = shower.Shower()
 
 # set containers for simulated EWH temperature, power and event time periods
-temp = []
-power = []
 activation_periods = []
 draw_event_periods = []
 
@@ -77,6 +78,7 @@ if ewh.always_on:
 for sim_day in range(simulation_days):
     # run shower usage simulation
     start_time, end_time, intensity = shower.simulate(user)
+    print(end_time-start_time)
     
     #generate EWH temperature profile
     for period in range (sim_period):
@@ -97,33 +99,32 @@ for sim_day in range(simulation_days):
         # perform draw event
         if ewh.draw_event:
             ewh.current_temp = ewh.draw_event_loss(draw_rate=intensity)
+            ewh_draw.append(intensity*60)
+        else:
+            ewh_draw.append(0)
         
         #determine temperature change due to ewh element
         if ewh.is_active:
             if ewh.element_on:
                 if ewh.current_temp < ewh.upper_temp_limit:
                     ewh.current_temp = ewh.increase_temp(sim.time_step)
-                    power.append(ewh.element_rating)
+                    ewh_power.append(ewh.element_rating)
                 else:
-                    print(pd.Timedelta(minutes=period))
+                    #print(pd.Timedelta(minutes=period))
                     ewh.element_on = False
-                    power.append(0)
+                    ewh_power.append(0)
             else:
                 if ewh.current_temp < ewh.lower_temp_limit:
-                    print(pd.Timedelta(minutes=period))
+                    #print(pd.Timedelta(minutes=period))
                     ewh.element_on = True
                     ewh.current_temp = ewh.increase_temp(sim.time_step)
-                    power.append(ewh.element_rating)
+                    ewh_power.append(ewh.element_rating)
                 else:
-                    power.append(0)
+                    ewh_power.append(0)
         else:
-            power.append(0)
+            ewh_power.append(0)
         
-        temp.append(ewh.current_temp)
-    # add current EWH temperature to list of other simulated EWH temperatures
-    ewh_temp.append(temp)
-    # add current EWH power to list of other simuated EWH power
-    ewh_power.append(power)
+        ewh_temp.append(ewh.current_temp)
     
 #INITIALISE DATAFRAME TO STORE SIMULATION RESULTS
 # restrict number of samples when plotting results for readability
@@ -138,9 +139,10 @@ sim_datetime = pd.date_range('2024-01-01 00:00:00', periods=sim_duration,
 # initialise and populate dataframe index and columns
 sim_df = pd.DataFrame(index=sim_datetime)
 sim_df.index.name = 'datetime'
-sim_df_column_names = ['EWH Temperature (\u2103)', 'EWH Power (kW)']
-sim_df['EWH Temperature (\u2103)'] = ewh_temp[0]
-sim_df['EWH Power (kW)'] = [power/1000 for power in ewh_power[0]]
+sim_df_column_names = ['EWH Temperature (\u2103)', 'EWH Power (kW)', 'Draw Volume (l/min)']
+sim_df['EWH Temperature (\u2103)'] = ewh_temp
+sim_df['EWH Power (kW)'] = [power/1000 for power in ewh_power]
+sim_df['Draw Volume (l/min)'] = ewh_draw
     
 #PLOT EWH SIMULATION RESULTS
 # figure display settings
@@ -148,25 +150,30 @@ date_format = DateFormatter("%H:%M")
 plt.rcParams['figure.dpi'] = 300
 
 # define plot figure
-sim_fig, sim_ax = plt.subplots(1, figsize=(18, 7))
+sim_fig, temp_ax = plt.subplots(1, figsize=(18, 7))
 
 #plot simulation results
-sim_ax.set_title('EWH Sim Results')
-sim_ax.set_xlabel('Time')
-sim_ax.set_ylabel('Temperature (\u2103)')
-sim_ax.margins(x=0.001, y=0.02)
-sim_ax.xaxis.set_major_formatter(date_format)
-sim_ax.plot(sim_df['EWH Temperature (\u2103)'])
+temp_ax.set_title("{0}-day EWH Simulation Results".format(simulation_days))
+temp_ax.set_xlabel('Time')
+temp_ax.set_ylabel('Temperature (\u2103)')
+temp_ax.margins(x=0.001, y=0.02)
+temp_ax.xaxis.set_major_formatter(date_format)
+temp_ax.plot(sim_df['EWH Temperature (\u2103)'])
+plt.ylim(0, ewh.upper_temp_limit+1)
 
-ax2 = sim_ax.twinx() 
-
-ax2.plot(sim_df['EWH Power (kW)'], color='tab:red')
-ax2.set_ylabel('Power (kW)')
+power_ax = temp_ax.twinx() 
+power_ax.plot(sim_df['EWH Power (kW)'], color='tab:red')
+power_ax.set_ylabel('Power (kW)')
+power_ax.margins(x=0.002, y=0.02)
 sim_fig.tight_layout()
 
+# draw_ax = temp_ax.twinx() 
+# draw_ax.plot(sim_df['Draw Volume (l/min)'], color='tab:red')
+# draw_ax.set_ylabel('Volume (l/min)')
+# sim_fig.tight_layout()
+
 #SAVE SIMULATIONS TO FILE
-# save EWH temperature profiles to CSV 
-#ewh_temp_df.to_csv("training_data/simulated_profiles/{0}_day_ewh_temp_profiles.csv".format(simulation_days))
+sim_df.to_csv("simulation_results/{0}_day_ewh_simulation.csv".format(simulation_days))
 
 # save EWH power profile to CSV 
 #ewh_power_df.to_csv("training_data/simulated_profiles/{0}_day_ewh_power_profiles.csv".format(simulation_days))
