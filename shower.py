@@ -2,6 +2,7 @@ import os
 import toml
 import pandas as pd
 import numpy as np
+import random
 from dataclasses import dataclass, field
 from settings import DATA_PATH
 
@@ -41,8 +42,15 @@ class Shower():
 
     def simulate(self, user):
         duration, intensity = self.duration_intensity(user.age)
-        user.generate_pdf()
-        start = int(user.schedule.pdf.sample().index[0].total_seconds() / 60)
+        #user.generate_pdf()
+        cdf = np.cumsum(user.schedule.pdf)
+        # randomly sample unique cdf value
+        cdf_val = cdf[cdf==random.sample(list(set(cdf)), 1)[0]]
+        if len(cdf_val) > 1:
+            start = int(cdf_val.sample().index[0].total_seconds() / 60)
+        else:
+            start = int(cdf_val.index[0].total_seconds() / 60)
+        #start = int(np.cumsum(user.schedule.pdf).sample().index[0].total_seconds() / 60)
         end = start + duration
         
         return start, end, intensity

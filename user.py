@@ -166,6 +166,8 @@ class User:
                 self.age = 'work_ad'
             else:
                 self.age = 'home_ad'
+        
+        self.generate_pdf()
 
     def generate_schedule(self, weekday=True):
         self.schedule = UserSchedule(user=self, weekday=weekday)
