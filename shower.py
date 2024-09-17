@@ -5,6 +5,25 @@ import numpy as np
 import random
 from dataclasses import dataclass, field
 from settings import DATA_PATH
+from bisect import bisect_left
+
+def take_closest(myList, myNumber):
+    """
+    Assumes myList is sorted. Returns closest value to myNumber.
+
+    If two numbers are equally close, return the smallest number.
+    """
+    pos = bisect_left(myList, myNumber)
+    if pos == 0:
+        return myList[0]
+    if pos == len(myList):
+        return myList[-1]
+    before = myList[pos - 1]
+    after = myList[pos]
+    if after - myNumber < myNumber - before:
+        return after
+    else:
+        return before
 
 @dataclass
 class Shower():
@@ -42,10 +61,12 @@ class Shower():
 
     def simulate(self, user):
         duration, intensity = self.duration_intensity(user.age)
-        #user.generate_pdf()
-        cdf = np.cumsum(user.schedule.pdf)
+        cdf = user.schedule.cdf
         # randomly sample unique cdf value
-        cdf_val = cdf[cdf==random.sample(list(set(cdf)), 1)[0]]
+        cdf_select = np.random.uniform(0, 1)
+        cdf_sample = take_closest(cdf.values, cdf_select)
+        #cdf_val = cdf[cdf==random.sample(list(set(cdf)), 1)[0]]
+        cdf_val = cdf[cdf==cdf_sample]
         if len(cdf_val) > 1:
             start = int(cdf_val.sample().index[0].total_seconds() / 60)
         else:

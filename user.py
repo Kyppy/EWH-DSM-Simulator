@@ -10,7 +10,7 @@ from matplotlib.dates import DateFormatter
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal
 from settings import DATA_PATH
-
+import random
 @dataclass
 class UserSchedule:
     """Class representing the user activity schedule."""
@@ -23,6 +23,7 @@ class UserSchedule:
     home: pd.Timedelta = field(init=False)
     sleep: pd.Timedelta = field(init=False)
     pdf: Any = field(init=False, repr=False)
+    cdf: Any = field(init=False, repr=False)
 
     # store probability distributions for each state of activity 
     _prob_getting_up: Any = field(init=False, repr=False)
@@ -54,21 +55,27 @@ class UserSchedule:
     
             # setattr(self, '_prob_' + key, dist(**newval))
             
-            mean = pd.Timedelta(val['mu']).total_seconds() / 60
-            std_dev = pd.Timedelta(val['sd']).total_seconds() / 60
+            mean = round(pd.Timedelta(val['mu']).total_seconds() / 60)
+            std_dev = round(pd.Timedelta(val['sd']).total_seconds() / 60)
             setattr(self, '_prob_' + key, dist(loc=mean, scale=std_dev))
 
         self.up = self.sample_single_property('_prob_getting_up')
+        print(self.up)
 
-        self.sleep = self.up - self.sample_single_property('_prob_sleep') + pd.Timedelta(days=1)
-
+        # self.sleep = self.up - self.sample_single_property('_prob_sleep') + pd.Timedelta(days=1)
+        # print(self.sleep)
+        self.sleep = self.sample_single_property('_prob_getting_up') - self.sample_single_property('_prob_sleep') + pd.Timedelta(days=1)
+        print(self.sleep)
+        
         self.go = self.sample_single_property('_prob_leaving_house')
-
+        print(self.go)
+        
         if self.go < self.up:
             self.go = self.up + pd.Timedelta(minutes=30)
 
         self.home = self.go + self.sample_single_property('_prob_being_away')
-
+        print(self.home)
+        
         if self.home < self.go:
             self.home = self.go  # actually no leave
 
@@ -88,17 +95,32 @@ class UserSchedule:
         home = int(self.home.total_seconds() / 60) % 1440
         home_p30 = int(home + 30) % 1440
 
-        sleep = int(self.sleep.total_seconds() / 60) % 1440
-        sleep_m30 = int(sleep - 30) % 1440
+        # sleep = int(self.sleep.total_seconds() / 60) % 1440
+        # sleep_m30 = int(sleep - 30) % 1440
+        
+        sleep_day, sleep = divmod(int(self.sleep.total_seconds() / 60), 1440)
+        print(sleep_day)
+        if sleep_day >= 1:
+            sleep_m30 = int(1440-30) % 1440
+        else:
+            sleep_m30 = int(sleep - 30) % 1440
 
         pdf = self.timeindexer(pdf, 'normal', up_p30, go_m30)
-        pdf = self.timeindexer(pdf, 'normal', home_p30, sleep_m30)
+        #pdf = self.timeindexer(pdf, 'normal', home_p30, sleep_m30)
         pdf = self.timeindexer(pdf, 'peak', up, up_p30)
         pdf = self.timeindexer(pdf, 'peak', go_m30, go)
         pdf = self.timeindexer(pdf, 'peak', home, home_p30)
-        pdf = self.timeindexer(pdf, 'peak', sleep_m30, sleep)
-        pdf = self.timeindexer(pdf, 'night', sleep, up)
+        #pdf = self.timeindexer(pdf, 'peak', sleep_m30, sleep)
+        #pdf = self.timeindexer(pdf, 'night', sleep, up)
         pdf = self.timeindexer(pdf, 'away', go, home)
+        
+        if sleep_day >= 1:
+            pdf = self.timeindexer(pdf, 'normal', home_p30, 1440)
+            pdf = self.timeindexer(pdf, 'night', 1440, up)
+        else:
+            pdf = self.timeindexer(pdf, 'normal', home_p30, sleep_m30)
+            pdf = self.timeindexer(pdf, 'peak', sleep_m30, sleep)
+            pdf = self.timeindexer(pdf, 'night', sleep, up)
         
         # cnts = pdf.value_counts(normalize=True)
         # try:
@@ -168,6 +190,7 @@ class User:
                 self.age = 'home_ad'
         
         self.generate_pdf()
+        self.schedule.cdf = np.cumsum(self.schedule.pdf)
 
     def generate_schedule(self, weekday=True):
         self.schedule = UserSchedule(user=self, weekday=weekday)
@@ -177,7 +200,13 @@ class User:
         self.schedule.pdf = self.schedule.generate_pdf(peak=peak, normal=normal, away=away, night=night)
         
 # user = User(age='work_ad')
-# pdf = user.generate_pdf()
+# pdf = user.schedule.pdf
+# cdf = user.schedule.cdf
+
+# cdf_list = random.sample(list(set(cdf)), 1)
+# cdf_val = cdf[cdf==cdf_list[0]]
+# # randomly sample unique cdf value
+# cdf_val = cdf[cdf==random.sample(list(set(cdf)), 1)[0]]
 
 # pdf.index =[utils.format_timedelta_to_HHMMSS(x) for x in pdf.index]
 

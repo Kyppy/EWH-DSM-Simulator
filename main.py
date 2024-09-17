@@ -189,7 +189,8 @@ if display_plot:
     sim_df.to_csv("simulation_results/{0}_day_ewh_simulation.csv".format(simulation_days))
 
 if display_pdf_hist:
-    plt.hist(start_times)
+    start_time_min = [round(x/60, 2) for x in start_times]
+    plt.hist(start_time_min, bins=np.arange(0, 24, 1), edgecolor="black", color="red")
     pdf = user.schedule.pdf
     cdf = np.cumsum(pdf)
     
