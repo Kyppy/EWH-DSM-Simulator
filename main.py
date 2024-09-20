@@ -180,11 +180,6 @@ if display_plot:
     power_ax.margins(x=0.002, y=0.02)
     sim_fig.tight_layout()
     
-    # draw_ax = temp_ax.twinx() 
-    # draw_ax.plot(sim_df['Draw Volume (l/min)'], color='tab:red')
-    # draw_ax.set_ylabel('Volume (l/min)')
-    # sim_fig.tight_layout()
-    
     #SAVE SIMULATIONS TO FILE
     sim_df.to_csv("simulation_results/{0}_day_ewh_simulation.csv".format(simulation_days))
 
@@ -207,14 +202,12 @@ if display_pdf_hist:
     cdf_ax.set_xlabel('Time')
     cdf_ax.set_ylabel('Probability Water Usage (CDF)')
     cdf_ax.margins(x=0.002, y=0.02)
-    #cdf_ax.xaxis.set_major_formatter(date_format)
     cdf_ax.plot(np.cumsum(pdf))
 
     pdf_ax = cdf_ax.twinx() 
     pdf_ax.plot(pdf, color='tab:red')
     pdf_ax.set_ylabel('Probability Water Usage (PDF)')
     pdf_ax.margins(x=0.002, y=0.02)
-    #pdf_ax.xaxis.set_major_formatter(date_format)
     cdf_fig.tight_layout()
     
 # save EWH power profile to CSV 
